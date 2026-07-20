@@ -1,25 +1,90 @@
-import app from "./app";
-import { logger } from "./lib/logger";
+import { buildApp } from './app.js';
+import { connectDatabase, disconnectDatabase } from './infrastructure/database.js';
+import { connectRedis, disconnectRedis } from './infrastructure/redis.js';
+import { baileysManager } from './engine/baileys.manager.js';
+import { createSocketGateway } from './gateway/socket.gateway.js';
+import { logger } from './lib/logger.js';
+import { env } from './config/env.js';
 
-const rawPort = process.env["PORT"];
+async function bootstrap() {
+  logger.info({ app: env.APP_NAME, version: env.APP_VERSION }, 'Starting Nexora Connect Engine');
 
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
+  // ── Phase 1: Database ──────────────────────────────────────────────────────
+  await connectDatabase();
+
+  // ── Phase 2: Redis (non-fatal — graceful degradation) ─────────────────────
+  await connectRedis();
+
+  // ── Phase 3: Build Fastify app ─────────────────────────────────────────────
+  const app = await buildApp();
+
+  // ── Phase 4: Socket.IO attached to Fastify's server ───────────────────────
+  // Fastify exposes its underlying http.Server via app.server
+  createSocketGateway(app.server as never);
+
+  // ── Phase 5: Queue Workers (requires Redis — optional) ────────────────────
+  try {
+    const { createSessionWorkers } = await import('./infrastructure/queue/workers/session.worker.js');
+    const workers = createSessionWorkers(baileysManager);
+    logger.info({ workerCount: workers.length }, 'Queue workers started');
+
+    // Store workers for graceful shutdown
+    process.on('beforeExit', async () => {
+      await Promise.allSettled(workers.map((w) => w.close()));
+    });
+  } catch (err) {
+    logger.warn({ err: (err as Error).message }, 'Queue workers skipped — Redis may be unavailable');
+  }
+
+  // ── Phase 6: Resume persisted WhatsApp sessions ───────────────────────────
+  baileysManager.resumePersistedSessions().catch((err) => {
+    logger.warn({ err: (err as Error).message }, 'Failed to resume some persisted sessions');
+  });
+
+  // ── Phase 7: Start listening ───────────────────────────────────────────────
+  const rawPort = process.env['PORT'];
+  const port = rawPort ? Number(rawPort) : env.PORT;
+
+  await app.listen({ port, host: env.HOST });
+
+  logger.info(
+    {
+      port,
+      host: env.HOST,
+      docs: `http://0.0.0.0:${port}${env.BASE_PATH}/docs`,
+      health: `http://0.0.0.0:${port}${env.BASE_PATH}/healthz`,
+    },
+    '🚀 Nexora Connect Engine is running',
   );
 }
 
-const port = Number(rawPort);
+async function shutdown(signal: string) {
+  logger.info({ signal }, 'Shutdown signal received — graceful shutdown starting');
 
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
+  try {
+    await baileysManager.shutdown();
+    await disconnectRedis();
+    await disconnectDatabase();
+    logger.info('Graceful shutdown complete');
+    process.exit(0);
+  } catch (err) {
+    logger.error({ err }, 'Error during shutdown');
     process.exit(1);
   }
+}
 
-  logger.info({ port }, "Server listening");
+process.on('SIGTERM', () => { shutdown('SIGTERM').catch(() => process.exit(1)); });
+process.on('SIGINT', () => { shutdown('SIGINT').catch(() => process.exit(1)); });
+process.on('uncaughtException', (err) => {
+  logger.fatal({ err }, 'Uncaught exception — process will exit');
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason) => {
+  logger.fatal({ reason }, 'Unhandled promise rejection — process will exit');
+  process.exit(1);
+});
+
+bootstrap().catch((err) => {
+  logger.fatal({ err }, 'Failed to start Nexora Connect Engine');
+  process.exit(1);
 });

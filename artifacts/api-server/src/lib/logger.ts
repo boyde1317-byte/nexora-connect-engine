@@ -1,20 +1,32 @@
-import pino from "pino";
+import pino from 'pino';
+import { env } from '../config/env.js';
 
-const isProduction = process.env.NODE_ENV === "production";
+const transport =
+  env.LOG_PRETTY
+    ? {
+        target: 'pino-pretty',
+        options: {
+          colorize: true,
+          translateTime: 'SYS:standard',
+          ignore: 'pid,hostname',
+        },
+      }
+    : undefined;
 
 export const logger = pino({
-  level: process.env.LOG_LEVEL ?? "info",
-  redact: [
-    "req.headers.authorization",
-    "req.headers.cookie",
-    "res.headers['set-cookie']",
-  ],
-  ...(isProduction
-    ? {}
-    : {
-        transport: {
-          target: "pino-pretty",
-          options: { colorize: true },
-        },
-      }),
+  name: env.APP_NAME,
+  level: env.LOG_LEVEL,
+  transport,
+  base: {
+    app: env.APP_NAME,
+    version: env.APP_VERSION,
+    env: env.NODE_ENV,
+  },
+  redact: {
+    paths: ['password', 'passwordHash', 'token', 'accessToken', 'refreshToken', 'apiKey'],
+    censor: '[REDACTED]',
+  },
+  timestamp: pino.stdTimeFunctions.isoTime,
 });
+
+export type Logger = typeof logger;
