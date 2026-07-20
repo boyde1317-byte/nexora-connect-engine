@@ -1,9 +1,9 @@
 export const QUEUE_NAMES = {
-  SESSION_CONNECT: 'session:connect',
-  SESSION_DISCONNECT: 'session:disconnect',
-  SESSION_RECONNECT: 'session:reconnect',
-  WEBHOOK_DELIVERY: 'webhook:delivery',
-  EVENT_PROCESSING: 'event:processing',
+  SESSION_CONNECT: 'session-connect',
+  SESSION_DISCONNECT: 'session-disconnect',
+  SESSION_RECONNECT: 'session-reconnect',
+  WEBHOOK_DELIVERY: 'webhook-delivery',
+  EVENT_PROCESSING: 'event-processing',
 } as const;
 
 export const REDIS_KEYS = {
