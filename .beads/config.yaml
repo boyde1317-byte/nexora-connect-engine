@@ -68,3 +68,5 @@
 sync.remote: "git+https://github.com/boyde1317-byte/nexora-connect-engine"
 dolt:
     shared-server: true
+export:
+    auto: true

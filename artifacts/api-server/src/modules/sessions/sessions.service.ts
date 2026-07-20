@@ -1,5 +1,6 @@
 import type { Session } from '@prisma/client';
 import { sessionsRepository, type FindSessionsOptions } from './sessions.repository.js';
+import { sessionEventsService } from './session-events.service.js';
 import { baileysManager } from '../../engine/baileys.manager.js';
 import { NotFoundError, ConflictError, SessionError } from '../../lib/errors.js';
 import { buildPaginationMeta } from '../../utils/helpers.js';
@@ -43,6 +44,11 @@ export class SessionsService {
       user: { connect: { id: userId } },
     });
     logger.info({ sessionId: session.id, userId }, 'Session created');
+    await sessionEventsService.log(session.id, 'session.created', {
+      userId,
+      connectionType: session.connectionType,
+      phoneNumber: session.phoneNumber ?? null,
+    });
     return session;
   }
 
@@ -77,6 +83,7 @@ export class SessionsService {
       await baileysManager.stopSession(sessionId);
     }
     await clearAuthState(sessionId);
+    await sessionEventsService.log(sessionId, 'session.deleted', { userId });
     await sessionsRepository.delete(sessionId);
     logger.info({ sessionId, userId }, 'Session deleted');
   }

@@ -31,6 +31,8 @@ export type SessionEventType =
   | 'connected'
   | 'disconnected'
   | 'message.received'
+  | 'session.created'
+  | 'session.deleted'
   | 'error';
 
 export interface SessionEvent {

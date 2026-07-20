@@ -14,9 +14,6 @@ vi.mock('../src/infrastructure/redis.js', () => ({
   isRedisAvailable: vi.fn().mockReturnValue(false),
   connectRedis: vi.fn(),
   disconnectRedis: vi.fn(),
-  cacheGet: vi.fn().mockResolvedValue(null),
-  cacheSet: vi.fn(),
-  cacheDel: vi.fn(),
 }));
 
 vi.mock('../src/engine/baileys.manager.js', () => ({

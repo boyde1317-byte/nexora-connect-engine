@@ -12,6 +12,7 @@ import { usePrismaAuthState, clearAuthState } from './auth-state.js';
 import { prisma } from '../infrastructure/database.js';
 import { logger } from '../lib/logger.js';
 import { enqueueSessionReconnect } from '../infrastructure/queue/queues.js';
+import { sessionEventsService } from '../modules/sessions/session-events.service.js';
 import { SOCKET_EVENTS } from '../config/constants.js';
 import type { SessionStateUpdate, BaileysSessionOptions } from './types.js';
 import { SessionStatus } from '@prisma/client';
@@ -108,6 +109,12 @@ export class BaileysSession extends EventEmitter {
       });
       sock.ev.on('messages.upsert', async ({ messages, type }: Record<string, unknown>) => {
         if (type === 'notify') {
+          const list = Array.isArray(messages) ? messages : [];
+          for (const msg of list) {
+            await sessionEventsService.log(this.sessionId, 'message.received', {
+              message: msg as Record<string, unknown>,
+            });
+          }
           this.emit('messages', { sessionId: this.sessionId, messages });
         }
       });
@@ -141,6 +148,10 @@ export class BaileysSession extends EventEmitter {
     const code = await this.socket.requestPairingCode(phoneNumber);
     const formatted = code.match(/.{1,4}/g)?.join('-') ?? code;
     await this.updateStatus(SessionStatus.PAIRING_PENDING, { pairingCode: formatted });
+    await sessionEventsService.log(this.sessionId, 'pairing.code', {
+      phoneNumber,
+      pairingCode: formatted,
+    });
     this.emit(SOCKET_EVENTS.SESSION_PAIRING_CODE, { sessionId: this.sessionId, pairingCode: formatted });
     return formatted;
   }
@@ -148,8 +159,11 @@ export class BaileysSession extends EventEmitter {
   private async handleConnectionUpdate(update: Record<string, unknown>): Promise<void> {
     const { connection, lastDisconnect, qr } = update;
 
+    await sessionEventsService.log(this.sessionId, 'connection.update', { update });
+
     if (typeof qr === 'string') {
       await this.updateStatus(SessionStatus.QR_PENDING, { qrCode: qr });
+      await sessionEventsService.log(this.sessionId, 'qr.update', { qrCode: qr });
       this.emit(SOCKET_EVENTS.SESSION_QR_UPDATED, { sessionId: this.sessionId, qrCode: qr });
     }
 
@@ -166,6 +180,10 @@ export class BaileysSession extends EventEmitter {
         qrCode: null,
         pairingCode: null,
       });
+      await sessionEventsService.log(this.sessionId, 'connected', {
+        phoneNumber: phoneNumber ?? null,
+        pushName: pushName ?? null,
+      });
       this.emit(SOCKET_EVENTS.SESSION_CONNECTED, { sessionId: this.sessionId, phoneNumber, pushName });
       this.sessionLog.info({ pushName, phoneNumber }, 'WhatsApp session connected');
     }
@@ -175,6 +193,12 @@ export class BaileysSession extends EventEmitter {
       const output = (err as Record<string, unknown> | undefined)?.['output'] as Record<string, unknown> | undefined;
       const code = output?.['statusCode'] as number | undefined;
       const shouldReconnect = code !== (disconnectReasonLoggedOut ?? 401);
+
+      await sessionEventsService.log(this.sessionId, 'disconnected', {
+        statusCode: code ?? null,
+        shouldReconnect,
+        error: err ? String(err) : null,
+      });
 
       this.emit(SOCKET_EVENTS.SESSION_DISCONNECTED, { sessionId: this.sessionId, statusCode: code, shouldReconnect });
 

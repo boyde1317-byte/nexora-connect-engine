@@ -35,6 +35,11 @@ const envSchema = z.object({
   SESSION_RECONNECT_DELAY: z.coerce.number().positive().default(5000),
   SESSION_MAX_RETRIES: z.coerce.number().positive().default(5),
 
+  // Webhooks
+  WEBHOOK_SIGNING_SECRET: z.string().min(32, 'WEBHOOK_SIGNING_SECRET must be at least 32 chars'),
+  WEBHOOK_TIMEOUT_MS: z.coerce.number().positive().default(10_000),
+  WEBHOOK_MAX_RETRIES: z.coerce.number().positive().default(5),
+
   // Logging
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   LOG_PRETTY: z

@@ -1,3 +1,4 @@
+import type { Worker } from 'bullmq';
 import { buildApp } from './app.js';
 import { connectDatabase, disconnectDatabase } from './infrastructure/database.js';
 import { connectRedis, disconnectRedis } from './infrastructure/redis.js';
@@ -5,6 +6,8 @@ import { baileysManager } from './engine/baileys.manager.js';
 import { createSocketGateway } from './gateway/socket.gateway.js';
 import { logger } from './lib/logger.js';
 import { env } from './config/env.js';
+
+const workers: Worker[] = [];
 
 async function bootstrap() {
   logger.info({ app: env.APP_NAME, version: env.APP_VERSION }, 'Starting Nexora Connect Engine');
@@ -25,13 +28,12 @@ async function bootstrap() {
   // ── Phase 5: Queue Workers (requires Redis — optional) ────────────────────
   try {
     const { createSessionWorkers } = await import('./infrastructure/queue/workers/session.worker.js');
-    const workers = createSessionWorkers(baileysManager);
-    logger.info({ workerCount: workers.length }, 'Queue workers started');
+    workers.push(...createSessionWorkers(baileysManager));
 
-    // Store workers for graceful shutdown
-    process.on('beforeExit', async () => {
-      await Promise.allSettled(workers.map((w) => w.close()));
-    });
+    const { createWebhookWorkers } = await import('./infrastructure/queue/workers/webhook.worker.js');
+    workers.push(...createWebhookWorkers());
+
+    logger.info({ workerCount: workers.length }, 'Queue workers started');
   } catch (err) {
     logger.warn({ err: (err as Error).message }, 'Queue workers skipped — Redis may be unavailable');
   }
@@ -62,6 +64,10 @@ async function shutdown(signal: string) {
   logger.info({ signal }, 'Shutdown signal received — graceful shutdown starting');
 
   try {
+    if (workers.length > 0) {
+      await Promise.allSettled(workers.map((w) => w.close()));
+      logger.info({ count: workers.length }, 'Queue workers closed');
+    }
     await baileysManager.shutdown();
     await disconnectRedis();
     await disconnectDatabase();
