@@ -47,6 +47,26 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+describe('JWT expiry metadata', () => {
+  it('exposes expiresIn derived from JWT_ACCESS_EXPIRES_IN', async () => {
+    const { env } = await import('../src/config/env.js');
+    userExistsByEmailMock.mockResolvedValue(false);
+    userCountMock.mockResolvedValue(0);
+    userCreateMock.mockResolvedValue({ ...baseUser, role: 'SUPER_ADMIN' });
+
+    const result = await authService.register({
+      email: 'fresh@example.com',
+      name: 'Fresh',
+      password: 'supersecret123',
+    });
+
+    expect(result.tokens.expiresIn).toBeGreaterThan(0);
+    // Sanity: 15m is the default
+    expect(result.tokens.expiresIn).toBe(900);
+    expect(env.JWT_ACCESS_EXPIRES_IN).toBe('15m');
+  });
+});
+
 describe('AuthService.register', () => {
   it('creates the first user as SUPER_ADMIN', async () => {
     userExistsByEmailMock.mockResolvedValue(false);

@@ -23,7 +23,7 @@ async function bootstrap() {
 
   // ── Phase 4: Socket.IO attached to Fastify's server ───────────────────────
   // Fastify exposes its underlying http.Server via app.server
-  createSocketGateway(app.server as never);
+  createSocketGateway(app.server);
 
   // ── Phase 5: Queue Workers (requires Redis — optional) ────────────────────
   try {

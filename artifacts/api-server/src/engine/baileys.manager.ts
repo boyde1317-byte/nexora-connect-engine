@@ -40,17 +40,16 @@ export class BaileysManager extends EventEmitter {
       phoneNumber: dbSession.phoneNumber ?? undefined,
     });
 
-    // Bubble all session events to the manager
-    session.on('*', (...args: unknown[]) => this.emit('*', ...args));
-    for (const event of Object.values({
-      STATUS_CHANGED: 'session:status_changed',
-      QR_UPDATED: 'session:qr_updated',
-      PAIRING_CODE: 'session:pairing_code',
-      CONNECTED: 'session:connected',
-      DISCONNECTED: 'session:disconnected',
-      ERROR: 'session:error',
-      MESSAGES: 'messages',
-    })) {
+    // Bubble session events to the manager
+    for (const event of [
+      'session:status_changed',
+      'session:qr_updated',
+      'session:pairing_code',
+      'session:connected',
+      'session:disconnected',
+      'session:error',
+      'messages',
+    ] as const) {
       session.on(event, (data: unknown) => this.emit(event, data));
     }
 

@@ -124,6 +124,25 @@ describe('authenticate (API Key)', () => {
     );
   });
 
+  it('throttles lastUsedAt writes to once per minute', async () => {
+    const rawKey = 'nck_throttle';
+    apiKeyFindUniqueMock.mockResolvedValue({
+      id: 'key-throttle',
+      keyHash: hashToken(rawKey),
+      isActive: true,
+      expiresAt: null,
+      user: { id: 'u', email: 'a', name: 'a', role: 'USER', isActive: true },
+    });
+
+    // First call writes lastUsedAt
+    await authenticate(makeReq({ 'x-api-key': rawKey }), noopReply);
+    expect(apiKeyUpdateMock).toHaveBeenCalledTimes(1);
+
+    // Immediate second call is throttled
+    await authenticate(makeReq({ 'x-api-key': rawKey }), noopReply);
+    expect(apiKeyUpdateMock).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects an unknown API key', async () => {
     apiKeyFindUniqueMock.mockResolvedValue(null);
     const req = makeReq({ 'x-api-key': 'nck_unknown' });

@@ -1,9 +1,4 @@
 import { randomBytes, createHash } from 'crypto';
-import { v4 as uuidv4 } from 'uuid';
-
-export function generateId(): string {
-  return uuidv4();
-}
 
 export function generateToken(bytes = 32): string {
   return randomBytes(bytes).toString('hex');
@@ -20,52 +15,12 @@ export function generateApiKey(): { key: string; hash: string; prefix: string } 
   return { key: rawKey, hash, prefix };
 }
 
-export function maskString(value: string, visibleEnd = 4): string {
-  if (value.length <= visibleEnd) return '****';
-  return '*'.repeat(value.length - visibleEnd) + value.slice(-visibleEnd);
-}
-
-export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-export function parsePhoneNumber(phone: string): string {
-  // Strip all non-numeric chars, ensure E.164-ish format for WhatsApp
-  return phone.replace(/\D/g, '');
-}
-
-export function toWhatsAppJid(phone: string): string {
-  const clean = parsePhoneNumber(phone);
-  return `${clean}@s.whatsapp.net`;
-}
-
-export function safeJson<T>(value: unknown): T | null {
-  try {
-    if (typeof value === 'string') {
-      return JSON.parse(value) as T;
-    }
-    return value as T;
-  } catch {
-    return null;
-  }
-}
-
 export function omit<T extends object, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
   const result = { ...obj };
   for (const key of keys) {
     delete result[key];
   }
   return result as Omit<T, K>;
-}
-
-export function pick<T extends object, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
-  const result = {} as Pick<T, K>;
-  for (const key of keys) {
-    if (key in obj) {
-      result[key] = obj[key];
-    }
-  }
-  return result;
 }
 
 export function paginate(page: number, pageSize: number): { skip: number; take: number } {
@@ -87,4 +42,24 @@ export function buildPaginationMeta(total: number, page: number, pageSize: numbe
     hasNext: page < totalPages,
     hasPrev: page > 1,
   };
+}
+
+/**
+ * Convert a duration string (e.g. "15m", "7d", "1h", "30s") to seconds.
+ * Throws on unparseable input. Supports s/m/h/d units.
+ */
+export function durationToSeconds(input: string): number {
+  const match = /^(\d+(?:\.\d+)?)\s*([smhd])$/.exec(input.trim().toLowerCase());
+  if (!match) {
+    throw new Error(`Invalid duration: ${input}`);
+  }
+  const value = Number(match[1]);
+  const unit = match[2];
+  switch (unit) {
+    case 's': return value;
+    case 'm': return value * 60;
+    case 'h': return value * 3600;
+    case 'd': return value * 86400;
+    default: throw new Error(`Invalid unit: ${unit}`);
+  }
 }

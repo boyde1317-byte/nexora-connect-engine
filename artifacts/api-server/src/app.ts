@@ -17,7 +17,6 @@ export async function buildApp(): Promise<FastifyInstance> {
     logger: false,
     trustProxy: true,
     requestIdHeader: 'x-request-id',
-    requestIdLogLabel: 'requestId',
   });
 
   // ─── Swagger / OpenAPI ─────────────────────────────────────────────────────

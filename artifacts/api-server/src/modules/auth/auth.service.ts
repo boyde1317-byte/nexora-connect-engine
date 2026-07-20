@@ -4,7 +4,7 @@ import { prisma } from '../../infrastructure/database.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../../lib/jwt.js';
 import { UnauthorizedError, ConflictError } from '../../lib/errors.js';
 import { BCRYPT_ROUNDS } from '../../config/constants.js';
-import { generateToken, hashToken, omit } from '../../utils/helpers.js';
+import { hashToken, omit, durationToSeconds } from '../../utils/helpers.js';
 import { env } from '../../config/env.js';
 import { logger } from '../../lib/logger.js';
 import type { User } from '@prisma/client';
@@ -134,12 +134,10 @@ export class AuthService {
       role: user.role,
     };
 
-    const [accessToken, rawRefreshToken] = await Promise.all([
+    const [accessToken, refreshToken] = await Promise.all([
       signAccessToken(jwtPayload),
-      Promise.resolve(generateToken(32)),
+      signRefreshToken(jwtPayload),
     ]);
-
-    const refreshToken = await signRefreshToken(jwtPayload);
     const tokenHash = hashToken(refreshToken);
 
     // Persist refresh token (hashed)
@@ -170,7 +168,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      expiresIn: 15 * 60, // 15 minutes in seconds
+      expiresIn: durationToSeconds(env.JWT_ACCESS_EXPIRES_IN),
     };
   }
 }

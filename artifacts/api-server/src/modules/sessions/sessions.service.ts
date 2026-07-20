@@ -1,4 +1,4 @@
-import type { Session } from '@prisma/client';
+import { Prisma, type Session } from '@prisma/client';
 import { sessionsRepository, type FindSessionsOptions } from './sessions.repository.js';
 import { sessionEventsService } from './session-events.service.js';
 import { baileysManager } from '../../engine/baileys.manager.js';
@@ -69,7 +69,7 @@ export class SessionsService {
       ...(input.description !== undefined && { description: input.description }),
       ...(input.webhookUrl !== undefined && { webhookUrl: input.webhookUrl }),
       // Cast metadata to Prisma's InputJsonValue via unknown
-      ...(input.metadata !== undefined && { metadata: input.metadata as unknown as import('@prisma/client').Prisma.InputJsonValue }),
+      ...(input.metadata !== undefined && { metadata: input.metadata as Prisma.InputJsonValue }),
     });
   }
 

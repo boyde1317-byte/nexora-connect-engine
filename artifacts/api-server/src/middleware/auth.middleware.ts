@@ -16,6 +16,20 @@ declare module 'fastify' {
   }
 }
 
+// Throttle lastUsedAt writes — at most one DB write per key per minute.
+const LAST_USED_THROTTLE_MS = 60_000;
+const lastUsedWrites = new Map<string, number>();
+
+function scheduleLastUsedUpdate(apiKeyId: string): void {
+  const now = Date.now();
+  const last = lastUsedWrites.get(apiKeyId) ?? 0;
+  if (now - last < LAST_USED_THROTTLE_MS) return;
+  lastUsedWrites.set(apiKeyId, now);
+  prisma.apiKey
+    .update({ where: { id: apiKeyId }, data: { lastUsedAt: new Date() } })
+    .catch(() => {});
+}
+
 export async function authenticate(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -44,10 +58,7 @@ export async function authenticate(
         throw new UnauthorizedError('Account disabled');
       }
 
-      // Update lastUsedAt async (don't await)
-      prisma.apiKey
-        .update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } })
-        .catch(() => {});
+      scheduleLastUsedUpdate(apiKey.id);
 
       request.user = {
         id: apiKey.user.id,

@@ -1,5 +1,5 @@
-import { Server as SocketIOServer } from 'socket.io';
-import type { Server as HttpServer } from 'http';
+import { Server as SocketIOServer, type Socket } from 'socket.io';
+import type { Server as HttpServer } from 'node:http';
 import { baileysManager } from '../engine/baileys.manager.js';
 import { verifyAccessToken } from '../lib/jwt.js';
 import { logger } from '../lib/logger.js';
@@ -11,6 +11,12 @@ interface SocketUserData {
   email: string;
   role: string;
   subscribedSessions: Set<string>;
+}
+
+declare module 'socket.io' {
+  interface Socket {
+    _nexoraUser?: SocketUserData;
+  }
 }
 
 let io: SocketIOServer | null = null;
@@ -40,15 +46,12 @@ export function createSocketGateway(httpServer: HttpServer): SocketIOServer {
 
       const payload = await verifyAccessToken(token);
 
-      const userData: SocketUserData = {
+      socket._nexoraUser = {
         userId: payload.sub as string,
         email: payload.email,
         role: payload.role,
         subscribedSessions: new Set(),
       };
-
-      // Store user data on socket
-      (socket as unknown as { _nexoraUser: SocketUserData })._nexoraUser = userData;
 
       next();
     } catch {
@@ -57,8 +60,8 @@ export function createSocketGateway(httpServer: HttpServer): SocketIOServer {
   });
 
   // ─── Connection Handler ──────────────────────────────────────────────────
-  io.on(SOCKET_EVENTS.CONNECT, (socket) => {
-    const userData = (socket as unknown as { _nexoraUser: SocketUserData })._nexoraUser;
+  io.on(SOCKET_EVENTS.CONNECT, (socket: Socket) => {
+    const userData = socket._nexoraUser;
     const socketLog = logger.child({ socketId: socket.id, userId: userData?.userId });
 
     socketLog.info('Client connected to WebSocket gateway');

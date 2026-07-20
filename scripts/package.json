@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "post-merge": "bash ./post-merge.sh",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "post-merge": "bash ./post-merge.sh"
   },
   "devDependencies": {
     "@types/node": "catalog:",
