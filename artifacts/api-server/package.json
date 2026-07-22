@@ -39,7 +39,8 @@
     "bcryptjs": "^2.4.3",
     "uuid": "^11.1.0",
     "qrcode": "^1.5.4",
-    "jose": "^5.10.0"
+    "jose": "^5.10.0",
+    "@whiskeysockets/baileys": "github:boyde1317-byte/baileys"
   },
   "devDependencies": {
     "prisma": "^5.22.0",
