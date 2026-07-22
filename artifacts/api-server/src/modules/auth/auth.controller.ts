@@ -48,7 +48,3 @@ export async function logoutAll(request: FastifyRequest, reply: FastifyReply) {
   await authService.logoutAll(request.user!.id);
   return reply.status(204).send();
 }
-
-export async function me(request: FastifyRequest, reply: FastifyReply) {
-  return reply.send({ data: request.user });
-}

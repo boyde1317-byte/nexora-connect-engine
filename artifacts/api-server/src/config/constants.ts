@@ -6,13 +6,6 @@ export const QUEUE_NAMES = {
   EVENT_PROCESSING: 'event-processing',
 } as const;
 
-export const REDIS_KEYS = {
-  SESSION_STATUS: (id: string) => `nexora:session:${id}:status`,
-  SESSION_QR: (id: string) => `nexora:session:${id}:qr`,
-  SESSION_LOCK: (id: string) => `nexora:session:${id}:lock`,
-  USER_SESSIONS: (userId: string) => `nexora:user:${userId}:sessions`,
-  RATE_LIMIT: (ip: string) => `nexora:ratelimit:${ip}`,
-} as const;
 
 export const SOCKET_EVENTS = {
   // Client → Server
@@ -38,8 +31,3 @@ export const JWT_ISSUER = 'nexora-connect-engine';
 
 export const BCRYPT_ROUNDS = 12;
 
-export const API_KEY_PREFIX_LENGTH = 8;
-export const API_KEY_LENGTH = 32;
-
-export const DEFAULT_PAGE_SIZE = 20;
-export const MAX_PAGE_SIZE = 100;

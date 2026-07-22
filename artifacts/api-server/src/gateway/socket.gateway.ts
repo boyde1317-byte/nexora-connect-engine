@@ -126,10 +126,6 @@ export function createSocketGateway(httpServer: HttpServer): SocketIOServer {
   return io;
 }
 
-export function getSocketGateway(): SocketIOServer | null {
-  return io;
-}
-
 export function emitToSession(sessionId: string, event: string, data: unknown): void {
   if (io) {
     io.to(`session:${sessionId}`).emit(event, data);

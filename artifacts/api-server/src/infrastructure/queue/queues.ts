@@ -80,7 +80,7 @@ export function getWebhookQueue(): Queue {
     webhookQueue = new Queue(QUEUE_NAMES.WEBHOOK_DELIVERY, {
       connection: getConnection(),
       defaultJobOptions: {
-        attempts: 5,
+        attempts: env.WEBHOOK_MAX_RETRIES,
         backoff: { type: 'exponential', delay: 1000 },
         removeOnComplete: { count: 500 },
         removeOnFail: { count: 200 },

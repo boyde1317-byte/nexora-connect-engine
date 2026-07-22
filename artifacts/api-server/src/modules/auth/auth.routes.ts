@@ -8,5 +8,5 @@ export async function authRoutes(fastify: FastifyInstance) {
   fastify.post('/refresh', c.refreshToken);
   fastify.post('/logout', c.logout);
   fastify.post('/logout-all', { preHandler: authenticate }, c.logoutAll);
-  fastify.get('/me', { preHandler: authenticate }, c.me);
+  // GET /auth/me removed — use GET /users/me instead (identical response, avoids duplication)
 }
