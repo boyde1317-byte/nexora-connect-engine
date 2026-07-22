@@ -1,9 +1,0 @@
-{
-  "database": "dolt",
-  "backend": "dolt",
-  "dolt_mode": "server",
-  "dolt_database": "nexora_connect_engine_f5d3e14c",
-  "project_id": "6f28d2b5-658c-4e49-ad0e-51f6b2d08343",
-  "global_dolt_database": "beads_global",
-  "global_project_id": "00000000-0000-0000-0000-000000000000"
-}
