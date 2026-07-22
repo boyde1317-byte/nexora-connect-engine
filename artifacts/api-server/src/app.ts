@@ -11,6 +11,7 @@ import { isAppError } from './lib/errors.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { usersRoutes } from './modules/users/users.routes.js';
 import { sessionsRoutes } from './modules/sessions/sessions.routes.js';
+import { jokesRoutes } from './modules/jokes/jokes.routes.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -40,6 +41,7 @@ export async function buildApp(): Promise<FastifyInstance> {
         { name: 'Auth', description: 'Authentication endpoints' },
         { name: 'Users', description: 'User management' },
         { name: 'Sessions', description: 'WhatsApp session lifecycle management' },
+        { name: 'Jokes', description: 'Joke generator with caching' },
         { name: 'Health', description: 'System health and monitoring' },
       ],
     },
@@ -50,7 +52,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     uiConfig: { docExpansion: 'list', deepLinking: false },
   });
 
-  // ─── Security ──────────────────────────────────────────────────────────────
+  // ─── Security ─────────────────────────────────────────────────────────────
   await app.register(helmet, {
     contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -63,7 +65,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     credentials: true,
   });
 
-  // ─── Rate Limiting ─────────────────────────────────────────────────────────
+  // ─── Rate Limiting ───────────────────────────────────────────────────────────
   await app.register(rateLimit, {
     max: env.RATE_LIMIT_MAX,
     timeWindow: env.RATE_LIMIT_WINDOW,
@@ -73,7 +75,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     }),
   });
 
-  // ─── Health Check ──────────────────────────────────────────────────────────
+  // ─── Health Check ─────────────────────────────��──────────────────────────────
   app.get(`${env.BASE_PATH}/healthz`, async (_request, reply) => {
     return reply.send({
       status: 'ok',
@@ -85,12 +87,13 @@ export async function buildApp(): Promise<FastifyInstance> {
     });
   });
 
-  // ─── Routes ────────────────────────────────────────────────────────────────
+  // ─── Routes ──────────────────────────────────────────────────────────────────
   await app.register(authRoutes, { prefix: `${env.BASE_PATH}/auth` });
   await app.register(usersRoutes, { prefix: `${env.BASE_PATH}/users` });
   await app.register(sessionsRoutes, { prefix: `${env.BASE_PATH}/sessions` });
+  await app.register(jokesRoutes, { prefix: `${env.BASE_PATH}/jokes` });
 
-  // ─── 404 Handler ──────────────────────────────────────────────────────────
+  // ─── 404 Handler ────────────────────────────────────────────────────────────
   app.setNotFoundHandler((_request, reply) => {
     return reply.status(404).send({
       success: false,
@@ -98,7 +101,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     });
   });
 
-  // ─── Global Error Handler ─────────────────────────────────────────────────
+  // ─── Global Error Handler ─────────────────────────────────────────────────────
   app.setErrorHandler((error, request, reply) => {
     const requestId = request.id;
 
