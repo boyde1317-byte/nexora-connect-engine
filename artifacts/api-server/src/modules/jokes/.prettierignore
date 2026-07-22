@@ -1,0 +1,16 @@
+# Generated files
+*.mjs
+*.js
+*.d.ts
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.tsbuildinfo
+
+# Lock files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
