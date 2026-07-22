@@ -133,7 +133,8 @@ export class BaileysSession extends EventEmitter {
     try {
       if (this.socket) {
         this.socket.ev.removeAllListeners();
-        await this.socket.logout().catch(() => {});
+        // Use end() — not logout(). logout() unpairs the device from WhatsApp;
+        // end() closes the socket connection gracefully without removing the pairing.
         this.socket.end(undefined);
         this.socket = null;
       }

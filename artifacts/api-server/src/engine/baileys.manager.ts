@@ -104,13 +104,30 @@ export class BaileysManager extends EventEmitter {
   async requestPairingCode(sessionId: string, phoneNumber: string): Promise<string> {
     const session = this.sessions.get(sessionId);
     if (!session) {
-      // Start session first for pairing
+      // Start session first for pairing, then wait for the socket to signal
+      // it is ready (QR_PENDING / CONNECTING status change) before requesting
+      // the pairing code. A fixed setTimeout(2000) is an unreliable race —
+      // the socket may not be ready on slow hosts, or may be ready much sooner.
       const started = await this.startSession(sessionId);
-      // Give socket a moment to initialize
-      await new Promise((r) => setTimeout(r, 2000));
+      await this.waitForSocketReady(started, 10_000);
       return started.requestPairingCode(phoneNumber);
     }
     return session.requestPairingCode(phoneNumber);
+  }
+
+  /**
+   * Waits until the session emits its first status change event (meaning the
+   * Baileys socket has opened and registered its event listeners), or until the
+   * timeout elapses. Falls back silently so callers are never left hanging.
+   */
+  private waitForSocketReady(session: BaileysSession, timeoutMs: number): Promise<void> {
+    return new Promise((resolve) => {
+      const timer = setTimeout(resolve, timeoutMs);
+      session.once('session:status_changed', () => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
   }
 
   // ─── Lifecycle ─────────────────────────────────────────────────────────────

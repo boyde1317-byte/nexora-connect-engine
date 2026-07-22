@@ -5,6 +5,7 @@ import { verifyAccessToken } from '../lib/jwt.js';
 import { logger } from '../lib/logger.js';
 import { SOCKET_EVENTS } from '../config/constants.js';
 import { env } from '../config/env.js';
+import { prisma } from '../infrastructure/database.js';
 
 interface SocketUserData {
   userId: string;
@@ -66,10 +67,24 @@ export function createSocketGateway(httpServer: HttpServer): SocketIOServer {
 
     socketLog.info('Client connected to WebSocket gateway');
 
-    socket.on(SOCKET_EVENTS.SESSION_SUBSCRIBE, (sessionId: unknown) => {
-      if (typeof sessionId !== 'string') return;
+    socket.on(SOCKET_EVENTS.SESSION_SUBSCRIBE, async (sessionId: unknown) => {
+      if (typeof sessionId !== 'string' || !userData) return;
+
+      // Verify the authenticated user owns this session before joining the room.
+      // Without this check any authenticated user could subscribe to any session.
+      const owned = await prisma.session.findFirst({
+        where: { id: sessionId, userId: userData.userId },
+        select: { id: true },
+      }).catch(() => null);
+
+      if (!owned) {
+        socketLog.warn({ sessionId }, 'Subscription rejected — session not owned by user');
+        socket.emit(SOCKET_EVENTS.ERROR, { message: 'Session not found or access denied' });
+        return;
+      }
+
       socketLog.debug({ sessionId }, 'Client subscribed to session');
-      userData?.subscribedSessions.add(sessionId);
+      userData.subscribedSessions.add(sessionId);
       void socket.join(`session:${sessionId}`);
     });
 

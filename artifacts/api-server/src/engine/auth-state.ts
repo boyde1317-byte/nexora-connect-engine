@@ -91,12 +91,17 @@ export async function usePrismaAuthState(
       // Baileys not installed — use placeholder
     }
 
-    authRecord = await prisma.sessionAuthState.create({
-      data: {
+    // Use upsert — not create — to handle the case where a previous (failed or
+    // force-stopped) run already wrote an auth record for this sessionId.
+    // A plain create() throws a unique-constraint error on restart.
+    authRecord = await prisma.sessionAuthState.upsert({
+      where: { sessionId },
+      create: {
         sessionId,
         creds: JSON.parse(JSON.stringify(creds, BUFFER_JSON_REPLACER)) as object,
         keys: {},
       },
+      update: {},
     });
     sessionLog.debug('Created new auth state');
   }
